@@ -1,0 +1,14 @@
+---
+# Add your data here:
+EMAIL : ""      # e-mail address you used to register at M-TEC portal
+PASSWORD : ""   # password you used to register at M-TEC portal
+
+##########################
+# Base config - probably no need to change
+BASE_URL : "https://energybutler.mtec-portal.com/api/sys/"  # Base URL of API
+TIMEOUT : 3   # Timeout (seconds) for querying the API
+
+DEMO_ACCOUNT : "2312942037@qq.com"    # e-mail adress of Demo account
+DEMO_STATION_ID : "1587705243920052226"
+
+
