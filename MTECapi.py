@@ -79,7 +79,7 @@ class MTECapi:
             "Authorization": token,
             "Connection": "keep-alive",
             "Content-Type": "application/json; charset=UTF-8",
-            "Cookie": "token=" + token,
+            "Cookie": "token=",
             "DNT": "1",
             "Host": "energybutler.mtec-portal.com",
             "Origin": "https://energybutler.mtec-portal.com",
@@ -150,15 +150,15 @@ class MTECapi:
 
     #-------------------------------------------------
     def lookup_direction( self, direction ):
-        if direction == 0:
-            return "-"
-        elif direction == 1:
+        if direction == 1:
             return "obtain"
         elif direction == 2:
-            return "feed in"    
+            return "feed in" 
+        elif direction == 3:
+            return "idle"       
 
     #-------------------------------------------------
-    def query_station_data( self, stationId ):
+    def query_station_data( self, stationId ):            
         url = "curve/station/getSingleStationDataV2"
         params = {
             "id": stationId      
@@ -196,20 +196,17 @@ class MTECapi:
                 "unit": d["dataNodeMap"]["inputNode"]["currentDataUnit"], 
                 "direction": d["dataNodeMap"]["inputNode"]["flowDirection"]
             }         
-
             data["load"] = {
                 "value": d["dataNodeMap"]["loadNode"]["currentData"], 
                 "unit": d["dataNodeMap"]["loadNode"]["currentDataUnit"], 
                 "direction": d["dataNodeMap"]["loadNode"]["flowDirection"] 
             }
-            
             data["battery"] = {
                 "value": d["dataNodeMap"]["batteryNode"]["currentData"], 
                 "unit": d["dataNodeMap"]["batteryNode"]["currentDataUnit"], 
                 "direction": d["dataNodeMap"]["batteryNode"]["flowDirection"], 
                 "SOC": d["dataNodeMap"]["batteryNode"]["otherData"] 
             }
-
             data["grid"] = {
                 "value": d["dataNodeMap"]["meterNode"]["currentData"], 
                 "unit": d["dataNodeMap"]["meterNode"]["currentDataUnit"], 
@@ -228,14 +225,57 @@ class MTECapi:
         }
         json_data = self._do_API_call( url, params=params, method="GET" )
         if json_data["code"] == "1000000":
-            return json_data["data"]
+            # map data into data structure
+            data = {}     
+            for node in json_data["data"]["config"]:
+                if node["labelId"] == 201:
+                    data["inverter"] = {}
+                    for d in node["data"]:
+                        data["inverter"][d["field"]] = d["value"] 
+
+                elif node["labelId"] == 203:   
+                    data["battery"] = {}
+                    for d in node["data"]:
+                            data["battery"][d["field"]] = d["value"] 
+                
+                elif node["labelId"] == 206:
+                    data["grid"] = {}
+                    for phase in node["data"]:
+                        for _, d in phase.items():
+                            if d.get("field"):
+                                data["grid"][d["field"]] = d["value"] 
+                
+                elif node["labelId"] == 502:            
+                    data["PV"] = {}
+                    for pv in node["data"]:
+                        for _, d in pv.items():
+                            if d.get("field"):
+                                data["PV"][d["field"]] = d["value"] 
+                                
+            return data
         else:
             logging.error( "Error while retrieving device data for deviceId '{}': {}".format( deviceId, str(json_data) ) )
             return False
 
     #-------------------------------------------------
-    def getTopology( self ):
-        return self.topology        
+    def getStations( self ):
+        stations = []
+        for station_id, station_data in self.topology.items():
+            item = [station_id, station_data]   
+            stations.append(item)
+        return stations
+
+    #-------------------------------------------------
+    def getDevices( self, station_id ):
+        devices = []
+        try:
+            device_list = self.topology[str(station_id)]["devices"]
+            for device_id, device_data in device_list.items():
+                item = [device_id, device_data]
+                devices.append(item)
+        except:
+            logging.error( "Couldn't get devices for station '{}'".format( station_id ) )
+        return devices
     
 #-------------------------------------------------
 if __name__ == "__main__":
