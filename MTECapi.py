@@ -17,6 +17,7 @@ from http.client import HTTPConnection
 class MTECapi:
     headers = None
     topology = {}
+    retry = 0
 
     #-------------------------------------------------
     def __init__( self ):
@@ -79,18 +80,8 @@ class MTECapi:
             "Authorization": token,
             "Connection": "keep-alive",
             "Content-Type": "application/json; charset=UTF-8",
-            "Cookie": "token=",
             "DNT": "1",
             "Host": "energybutler.mtec-portal.com",
-            "Origin": "https://energybutler.mtec-portal.com",
-            "Referer": "https://energybutler.mtec-portal.com/login",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site" : "same-origin",
-            "Sec-GPC": "1",
-            "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0",
-            "ver": "pc",
-            "X-Requested-With": "XMLHttpRequest"
         }
 
     #---------------------------------------------
@@ -104,6 +95,16 @@ class MTECapi:
         else:
             if response.status_code == 200:
                 result = response.json()
+                if result["code"] == "3010022":     # Login timeout - retry
+                    if self.retry < cfg["MAX_LOGIN_RETRY"]:
+                        self.retry += 1
+                        logging.info( "Token expired - try re-login ({:n}/{:n})".format( self.retry, cfg["MAX_LOGIN_RETRY"]) )
+                        if self._login():
+                            result = self._do_API_call( url, params, payload, method )
+                            if result["code"] == "1000000":
+                                self.retry = 0                 
+                    else:    
+                        logging.error( "Re-login failed. Giving up." )
             else:
                 logging.error( "Couldn't request PV REST API: {:s} {:s} ({:s}) Response {}".format(url, method, str(payload), response) )
         return result    
@@ -228,7 +229,8 @@ class MTECapi:
             # map data into data structure
             data = {}     
             for node in json_data["data"]["config"]:
-                if node["labelId"] == 201:
+                if node["labelId"] == 201:  
+                    
                     data["inverter"] = {}
                     for d in node["data"]:
                         data["inverter"][d["field"]] = d["value"] 
@@ -251,7 +253,7 @@ class MTECapi:
                         for _, d in pv.items():
                             if d.get("field"):
                                 data["PV"][d["field"]] = d["value"] 
-                                
+
             return data
         else:
             logging.error( "Error while retrieving device data for deviceId '{}': {}".format( deviceId, str(json_data) ) )
