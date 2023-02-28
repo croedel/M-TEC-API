@@ -6,7 +6,40 @@ This tool enables to query MTECapi and can act as demo on how to use the API
 from config import cfg
 import logging
 import json
+import datetime
 import MTECapi
+
+#-----------------------------
+def let_user_select_station( api ):
+  # Display list of available stations
+  stations = api.getStations()
+  idx=0
+  for station_id, station_data in stations:
+    print( "  (#{}) StationId '{}' : {}".format( idx, station_id, station_data['name']) )
+    idx+=1 
+  i = int(input("Please select station #: "))
+
+  if i > idx-1:
+    print("Invalid #")
+    return 
+  else:
+    return stations[i][0]
+
+#-----------------------------
+def let_user_select_device( api, stationId ):
+  # Display list of available devices
+  devices = api.getDevices(stationId)
+  idx=0
+  for device_id, device_data in devices:
+    print( "  (#{}) DeviceId '{}' : {}".format( idx, device_id, device_data['name']) ) 
+    idx+=1
+  i = int(input("Please select device #: "))
+
+  if i > idx-1:
+    print("Invalid #")
+    return
+  else:
+    return devices[i][0]
 
 #-----------------------------
 def show_topology( api ):
@@ -24,20 +57,8 @@ def show_topology( api ):
 
 #-----------------------------
 def show_station_data ( api ):
-  # Display list of available stations
-  stations = api.getStations()
-  idx=0
-  for station_id, station_data in stations:
-    print( "  (#{}) StationId '{}' : {}".format( idx, station_id, station_data['name']) )
-    idx+=1 
-  i = int(input("Please select station #: "))
-
-  if i > idx-1:
-    print("Invalid #")
-    return
-
-  # Query data
-  data = api.query_station_data( stations[i][0] )
+  stationId = let_user_select_station(api)
+  data = api.query_station_data( stationId )
   idx=1
   if data: 
     print( "--------------------------------------------------------" )
@@ -63,36 +84,50 @@ def show_station_data ( api ):
 
 #-----------------------------
 def show_device_data( api ):
-  # Display list of available stations
-  stations = api.getStations()
-  idx=0
-  for station_id, station_data in stations:
-    print( "  (#{}) StationId '{}' : {}".format( idx, station_id, station_data['name']) ) 
-    idx+=1
-  i = int(input("Please select station #: "))
-
-  if i > idx-1:
-    print("Invalid #")
-    return
-
-  # Display list of available devices
-  devices = api.getDevices(stations[i][0])
-  idx=0
-  for device_id, device_data in devices:
-    print( "  (#{}) DeviceId '{}' : {}".format( idx, device_id, device_data['name']) ) 
-    idx+=1
-  i = int(input("Please select device #: "))
-
-  if i > idx-1:
-    print("Invalid #")
-    return
-
-  # Query data
-  data = api.query_device_data( devices[i][0] )
+  stationId = let_user_select_station( api )
+  deviceId = let_user_select_device( api, stationId )
+  data = api.query_device_data( deviceId )
   if data: 
     print( "--------------------------------------------------------" )
     print( json.dumps(data, indent=2) )
 
+#-----------------------------
+def show_usage_data_day( api ):
+  stationId = let_user_select_station( api )
+  days = int(input("Select no. of days you want to export: "))
+
+  print( "--------------------------------------------------------" )
+  print( "timestamp, load, grid, PV, battery, SOC")
+  end_date = datetime.datetime.now()
+  date = end_date - datetime.timedelta(days=days)
+
+  while date <= end_date:
+    data = api.query_usage_data_day( stationId, date )
+    if data: 
+      for item in data:
+        print( "{}, {}, {}, {}, {}, {}".format( item["ts"], item["load"], item["grid"], 
+                                             item["PV"], item["battery"], item["SOC"] ) )
+    date += datetime.timedelta(days=1)
+
+#-----------------------------
+def show_usage_data_month( api ):
+  stationId = let_user_select_station( api )
+  months = int(input("Select no. of months you want to export: "))
+
+  print( "--------------------------------------------------------" )
+  print( "date, ...")
+  today = datetime.datetime.now()
+  end_date = datetime.datetime( today.year, today.month, 1 )
+  date = end_date - datetime.timedelta(days=(months-1)*30)
+
+  while date <= end_date:
+    data = api.query_usage_data_month( stationId, date )
+    if data: 
+      for item in data:
+        print( "{}, {}, {}, {}, {}, {}".format( item["date"], item["grid_load"], item["grid_feed"], 
+                                              item["battery_load"], item["battery_feed"], 
+                                              item["day_total"] ) )
+    date += datetime.timedelta(days=30)
 
 #-------------------------------
 def main():
@@ -104,6 +139,8 @@ def main():
     print( "  1: List system topology" )
     print( "  2: List station data" )
     print( "  3: List device data" )
+    print( "  4: Usage data (day)" )
+    print( "  5: Usage data (month)" )
     print( "  x: Exit" )
     opt = input("Please select: ")
     if opt == "1": 
@@ -112,6 +149,10 @@ def main():
       show_station_data(api)
     elif opt == "3":  
       show_device_data(api)
+    elif opt == "4":
+      show_usage_data_day(api)  
+    elif opt == "5":
+      show_usage_data_month(api)  
     elif opt == "x" or opt == "X":  
       break
   

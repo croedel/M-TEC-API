@@ -11,6 +11,8 @@ import requests
 import hashlib
 import base64
 import json
+import time
+from datetime import datetime
 from http.client import HTTPConnection
 
 #-------------------------------------------------
@@ -30,6 +32,12 @@ class MTECapi:
         for station_id in self.topology: # loop over all stations
             self.query_device_list( station_id )
 
+    #-------------------------------------------------
+    def _getTimezoneOffset( self ):
+        ts = time.time()
+        utc_offset_sec = (datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts)).total_seconds()
+        return int(utc_offset_sec / 60) # minutes
+    
     #-------------------------------------------------
     def _login( self ):    
         self._set_headers( "" ) # clear evtl. existing token data
@@ -218,6 +226,78 @@ class MTECapi:
             logging.error( "Error while retrieving device list for stationId '{}': {}".format( stationId, str(json_data) ) )
             
 
+    #-------------------------------------------------
+    def query_usage_data_day( self, stationId, dateTime=None ):            
+        url = "curve/station/getGridConnectedData"
+        if dateTime == None:
+            dateTime = datetime.now()
+        params = {
+            "id": stationId,
+            "durationType": "1",
+            "date": dateTime.strftime("%Y-%m-%d"),
+            "stationType": "0",
+            "timeZoneOffset": self._getTimezoneOffset(),
+            "type": "powerflow"
+        }
+        json_data = self._do_API_call( url, params=params, method="GET" )
+        if json_data["code"] == "1000000":
+            # map data into data structure
+            d = json_data["data"]["curve"]
+            data = []
+            for i in d:
+                ts = i.get("dateStamp") 
+                load = i.get("loadPower") 
+                grid = i.get("pMeter") 
+                PV = i.get("power") 
+                battery = i.get("battery") 
+                SOC = i.get("SOC")
+                if ts and load and grid and PV and battery and SOC:
+                    data.append( { "ts": ts, "load": load, "grid": grid, "PV": PV, "battery": battery, "SOC": SOC } )
+            return data
+        else:
+            logging.error( "Error while retrieving usage data for stationId '{}': {}".format( stationId, str(json_data) ) )
+            return False
+
+    #-------------------------------------------------
+    def query_usage_data_month( self, stationId, dateTime=None ):            
+        url = "curve/station/getGridConnectedData"
+        if dateTime == None:
+            dateTime = datetime.now()
+        params = {
+            "id": stationId,
+            "durationType": "2",
+            "date": dateTime.strftime("%Y-%m"),
+            "stationType": "0",
+            "timeZoneOffset": self._getTimezoneOffset(),
+            "type": "init"
+        }
+        json_data = self._do_API_call( url, params=params, method="GET" )
+        if json_data["code"] == "1000000":
+            # map data into data structure
+            d = json_data["data"]["curve"]
+            data = []
+            for i in d:
+                date = "{}-{:02d}".format( dateTime.strftime("%Y-%m"), i.get("date") ) 
+                grid_load = i.get("ebuydaytotal") 
+                grid_feed = i.get("eselldaytotal") 
+                battery_load = i.get("ebatteryDischargeDaily") 
+                battery_feed = i.get("ebatteryChargeDaily")
+                day_total = i.get("edaytotal") # total energy 
+                # i.get("eloadUpDay") 
+                # i.get("eTotal")    
+                # i.get("eusedaytotal") 
+
+                if date and day_total :
+                    data.append( { "date": date, 
+                                  "grid_load": grid_load, "grid_feed": grid_feed, 
+                                  "battery_load": battery_load, "battery_feed": battery_feed, 
+                                  "day_total": day_total } )
+            return data
+        else:
+            logging.error( "Error while retrieving usage data for stationId '{}': {}".format( stationId, str(json_data) ) )
+            return False
+
+    
     #-------------------------------------------------
     def query_device_data( self, deviceId ):
         url = "device/getDeviceDataV3"
