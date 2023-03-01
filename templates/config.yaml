@@ -2,7 +2,6 @@
 # Add your data here:
 PV_EMAIL : ""               # e-mail address you used to register at M-TEC portal
 PV_PASSWORD : ""            # password you used to register at M-TEC portal
-PV_STATION_ID : ""          # Your individual MCT power stationId
 
 ##########################
 # Base config - probably no need to change
