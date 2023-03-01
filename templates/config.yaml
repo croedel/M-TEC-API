@@ -1,7 +1,8 @@
 ---
 # Add your data here:
-EMAIL : ""      # e-mail address you used to register at M-TEC portal
-PASSWORD : ""   # password you used to register at M-TEC portal
+PV_EMAIL : ""               # e-mail address you used to register at M-TEC portal
+PV_PASSWORD : ""            # password you used to register at M-TEC portal
+PV_STATION_ID : ""          # Your individual MCT power stationId
 
 ##########################
 # Base config - probably no need to change
@@ -11,5 +12,4 @@ MAX_LOGIN_RETRY : 3 # No. of retries for login
 
 DEMO_ACCOUNT : "2312942037@qq.com"    # e-mail adress of Demo account
 DEMO_STATION_ID : "1587705243920052226"
-
 
