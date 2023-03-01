@@ -23,8 +23,8 @@ class MTECapi:
 
     #-------------------------------------------------
     def __init__( self ):
-        self.email = cfg["EMAIL"]
-        self.password = cfg["PASSWORD"]
+        self.email = cfg["PV_EMAIL"]
+        self.password = cfg["PV_PASSWORD"]
         # Login
         self._login()
         # Query (and cache) topology info
@@ -41,7 +41,7 @@ class MTECapi:
     #-------------------------------------------------
     def _login( self ):    
         self._set_headers( "" ) # clear evtl. existing token data
-        if( cfg["EMAIL"] == "" ):
+        if( self.email == "" ):
             logging.info( "Executing login with demo account" )
             r_login = self._api_demo_login()  
         else:   
@@ -68,11 +68,11 @@ class MTECapi:
     #-------------------------------------------------
     def _api_login( self ):
         url = "login/manager"
-        salt = hashlib.md5( cfg["PASSWORD"].encode() ).hexdigest()
+        salt = hashlib.md5( self.password.encode() ).hexdigest()
         password_b64 = base64.b64encode( salt.encode() ).decode()
         payload = { 
             "channel": 1, 
-            "email": cfg["EMAIL"], 
+            "email": self.email, 
             "password": password_b64, 
             "salt": salt 
         }
