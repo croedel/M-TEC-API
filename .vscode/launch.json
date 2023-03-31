@@ -9,6 +9,7 @@
       "type": "python",
       "request": "launch",
       "program": "${file}",
+      "args": ["day","2023-03-20"],
       "console": "integratedTerminal",
       "justMyCode": true
     }

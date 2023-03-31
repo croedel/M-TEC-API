@@ -4,9 +4,9 @@ This tool enables to query MTECapi and can act as demo on how to use the API
 (c) 2023 by Christian Rödel 
 """
 from config import cfg
-import logging
 import json
 import datetime
+from dateutil.relativedelta import relativedelta
 import MTECapi
 
 #-----------------------------
@@ -96,13 +96,13 @@ def show_usage_data_day( api ):
   stationId = let_user_select_station( api )
   days = int(input("Select no. of days you want to export: "))
 
-  print( "--------------------------------------------------------" )
-  print( "timestamp, load, grid, PV, battery, SOC")
   end_date = datetime.datetime.now()
   date = end_date - datetime.timedelta(days=days)
+  print( "--------------------------------------------------------" )
+  print( "timestamp, load, grid, PV, battery, SOC")
 
   while date <= end_date:
-    data = api.query_usage_data_day( stationId, date )
+    data = api.query_usage_data( stationId, "day", date )
     if data: 
       for item in data:
         print( "{}, {}, {}, {}, {}, {}".format( item["ts"], item["load"], item["grid"], 
@@ -114,20 +114,20 @@ def show_usage_data_month( api ):
   stationId = let_user_select_station( api )
   months = int(input("Select no. of months you want to export: "))
 
-  print( "--------------------------------------------------------" )
-  print( "date, ...")
   today = datetime.datetime.now()
   end_date = datetime.datetime( today.year, today.month, 1 )
   date = end_date - datetime.timedelta(days=(months-1)*30)
+  print( "--------------------------------------------------------" )
+  print( "date, load, pv_production, grid_load, grid_feed, battery_load, battery_feed")
 
   while date <= end_date:
-    data = api.query_usage_data_month( stationId, date )
+    data = api.query_usage_data( stationId, "month", date )
     if data: 
       for item in data:
-        print( "{}, {}, {}, {}, {}, {}".format( item["date"], item["grid_load"], item["grid_feed"], 
-                                              item["battery_load"], item["battery_feed"], 
-                                              item["day_total"] ) )
-    date += datetime.timedelta(days=30)
+        print( "{}, {}, {}, {}, {}, {}, {}".format( item["date"], item["load"], item["pv_production"],
+                                              item["grid_load"], item["grid_feed"], 
+                                              item["battery_load"], item["battery_feed"] ) )
+    date += relativedelta(months=1)
 
 #-------------------------------
 def main():

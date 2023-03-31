@@ -225,77 +225,80 @@ class MTECapi:
         else:
             logging.error( "Error while retrieving device list for stationId '{}': {}".format( stationId, str(json_data) ) )
             
-
     #-------------------------------------------------
-    def query_usage_data_day( self, stationId, dateTime=None ):            
+    def query_usage_data( self, stationId, durationType, dateTime=None ):            
         url = "curve/station/getGridConnectedData"
+        date_str = ""
         if dateTime == None:
             dateTime = datetime.now()
+
+        if durationType=="day": 
+            dt = 1
+            date_str = dateTime.strftime("%Y-%m-%d")
+        elif durationType=="month":
+            dt = 2
+            date_str = dateTime.strftime("%Y-%m")
+        elif durationType=="year":
+            dt = 3
+            date_str = dateTime.strftime("%Y")
+        elif durationType=="lifetime":
+            dt = 4
+                        
         params = {
             "id": stationId,
-            "durationType": "1",
-            "date": dateTime.strftime("%Y-%m-%d"),
+            "durationType": dt,
+            "date": date_str,
             "stationType": "0",
             "timeZoneOffset": self._getTimezoneOffset(),
             "type": "powerflow"
         }
         json_data = self._do_API_call( url, params=params, method="GET" )
         if json_data["code"] == "1000000":
-            # map data into data structure
-            d = json_data["data"]["curve"]
-            data = []
-            for i in d:
-                ts = i.get("dateStamp") 
-                load = i.get("loadPower") 
-                grid = i.get("pMeter") 
-                PV = i.get("power") 
-                battery = i.get("battery") 
-                SOC = i.get("SOC")
-                if ts and load and grid and PV and battery and SOC:
-                    data.append( { "ts": ts, "load": load, "grid": grid, "PV": PV, "battery": battery, "SOC": SOC } )
-            return data
+            if durationType=="day":
+                return self._parse_usage_data_day( json_data )
+            else:
+                return self._parse_usage_data( date_str, json_data )
         else:
             logging.error( "Error while retrieving usage data for stationId '{}': {}".format( stationId, str(json_data) ) )
             return False
 
     #-------------------------------------------------
-    def query_usage_data_month( self, stationId, dateTime=None ):            
-        url = "curve/station/getGridConnectedData"
-        if dateTime == None:
-            dateTime = datetime.now()
-        params = {
-            "id": stationId,
-            "durationType": "2",
-            "date": dateTime.strftime("%Y-%m"),
-            "stationType": "0",
-            "timeZoneOffset": self._getTimezoneOffset(),
-            "type": "init"
-        }
-        json_data = self._do_API_call( url, params=params, method="GET" )
-        if json_data["code"] == "1000000":
-            # map data into data structure
-            d = json_data["data"]["curve"]
-            data = []
-            for i in d:
-                date = "{}-{:02d}".format( dateTime.strftime("%Y-%m"), i.get("date") ) 
-                grid_load = i.get("ebuydaytotal") 
-                grid_feed = i.get("eselldaytotal") 
-                battery_load = i.get("ebatteryDischargeDaily") 
-                battery_feed = i.get("ebatteryChargeDaily")
-                day_total = i.get("edaytotal") # total energy 
-                # i.get("eloadUpDay") 
-                # i.get("eTotal")    
-                # i.get("eusedaytotal") 
+    def _parse_usage_data_day( self, json_data ):            
+        # map data into data structure (daily is different from the other time ranges)
+        d = json_data["data"]["curve"]
+        data = []
+        for i in d:
+            ts = i.get("dateStamp") 
+            load = i.get("loadPower") 
+            grid = i.get("pMeter") 
+            PV = i.get("power") 
+            battery = i.get("battery") 
+            SOC = i.get("SOC")
+            if ts and load and grid and PV and battery and SOC:
+                data.append( { "ts": ts, "load": load, "grid": grid, "PV": PV, "battery": battery, "SOC": SOC } )
+        return data
 
-                if date and day_total :
-                    data.append( { "date": date, 
-                                  "grid_load": grid_load, "grid_feed": grid_feed, 
-                                  "battery_load": battery_load, "battery_feed": battery_feed, 
-                                  "day_total": day_total } )
-            return data
-        else:
-            logging.error( "Error while retrieving usage data for stationId '{}': {}".format( stationId, str(json_data) ) )
-            return False
+    #-------------------------------------------------
+    def _parse_usage_data( self, date_str, json_data ):            
+        # map data into data structure
+        d = json_data["data"]["curve"]
+        data = []
+        for i in d:
+            if date_str: # month or year
+                date = "{}-{:02d}".format( date_str, i.get("date") ) 
+            else: # lifetime
+                date = i.get("date") 
+            grid_load = i.get("ebuytotal") 
+            grid_feed = i.get("eselltotal") 
+            battery_load = i.get("ebatteryDischarge") 
+            battery_feed = i.get("ebatteryCharge")
+            pv_production = i.get("eTotal")    
+            load = i.get("eusetotal") 
+
+            if date and pv_production:
+                data.append( { "date": date, "load": load, "pv_production": pv_production,
+                    "grid_load": grid_load, "grid_feed": grid_feed, "battery_load": battery_load, "battery_feed": battery_feed } )
+        return data
 
     
     #-------------------------------------------------
