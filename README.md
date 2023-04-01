@@ -1,5 +1,5 @@
-# M-TEC Energybutler API
-Welcome to the `M-TEC Energybutler API` project!
+# M-TEC API
+Welcome to the `M-TEC API` project!
 It enables to read data from a M-TEC Energybutler system (https://www.mtec-systems.com).
 
 The trigger for this project was, that after my PV inverter from M-TEC was installed, I wanted to read out some data and statistics in order to integrate it into my smart home environment. Unfortunately, I couldn't find any documented API to access the M-TEC inverter. 
