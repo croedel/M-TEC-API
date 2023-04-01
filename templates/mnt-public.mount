@@ -1,0 +1,12 @@
+[Unit]
+Description=NAS mount /volume1/public
+After=network.target
+
+[Mount]
+What=<IP Address>:/volume1/public
+Where=/mnt/public
+Type=nfs
+Options=
+
+[Install]
+WantedBy=multi-user.target

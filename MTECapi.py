@@ -99,7 +99,8 @@ class MTECapi:
             response = requests.request( method, cfg["BASE_URL"]+url, headers=self.headers, params=params, 
                                         json=payload, timeout=cfg["TIMEOUT"] )
         except requests.exceptions.RequestException as err:
-            logging.error( "Couldn't request PV REST API: {:s} {:s} ({:s}) Exception {:s}".format(url, method, str(payload), str(err)) )
+            logging.error( "Couldn't request REST API: {:s} {:s} ({:s}) Exception {:s}".format(url, method, str(payload), str(err)) )
+            result["code"] = "-1"
         else:
             if response.status_code == 200:
                 result = response.json()
@@ -114,7 +115,7 @@ class MTECapi:
                     else:    
                         logging.error( "Re-login failed. Giving up." )
             else:
-                logging.error( "Couldn't request PV REST API: {:s} {:s} ({:s}) Response {}".format(url, method, str(payload), response) )
+                logging.error( "Couldn't request REST API: {:s} {:s} ({:s}) Response {}".format(url, method, str(payload), response) )
         return result    
 
     #-------------------------------------------------

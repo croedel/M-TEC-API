@@ -16,8 +16,10 @@ _Disclaimer:_ This project is a pure hobby project which I created by reverse-en
 The actual API can be found in `MTECapi.py`. It offers functionality to:
 * Connect to yout M-TEC account
 * List your Plants and Devices and their base data
-* Retrieve current usage data
+* Retrieve current status and usage data
 * Retrieve historical usage data with different aggregation levels (day, month)
+
+To minimize the risk, I intentionally implemented read functionality only. 
 
 ### Demo client
 The demo-client `MTEC_client.py` is a simple interactive tool which makes use of `MTECapi` class and shows how to use it.
@@ -25,6 +27,28 @@ The demo-client `MTEC_client.py` is a simple interactive tool which makes use of
 ### CSV export tool
 The command-line tool `export_data.py` offers functionality to export usage data in CSV format.
 This enables to archive the data localy or to process it further in a database or spreadsheet tool.   
+
+### Tools and utils
+#### cronjob
+I wanted to have a daily export of the PV data and store it on a lokal NAS drive.
+Therefore I wrote a little shell script which uses the CSV export tool and saved the data on a NFS mounted drive. It is called `cron_daily.sh`.
+You probably need to adjust some paths to make it fit to your environment.
+
+If you want to add it to the crontab, you need to open your crontab with `crontab -e` and add a line like e.g. 
+```
+0 5 * * * /home/pi/infotainment/MTEC_energybutler_API/cron_daily.sh 2>&1 /home/pi/infotainment/MTEC_energybutler_API/cron.log
+```
+
+#### NFS mount 
+In `templates` you find a systemctl file which enables to NFS mount a drive from a local NAS (`mnt-public.mount`).
+You just might need to replace some minor things like hostname/IP addresses etc.
+
+_Hint:_ In order to install it, you need to be root (or use sudo):
+
+- Copy it to the systemd directory `/etc/systemd/system`
+- Reload systemctl units by `systemctl daemon-reload`
+- To start a service manually, use `systemctl start mnt-public.mount` etc. 
+- To start a service at boot time automatically, use `systemctl enable mnt-public.mount` etc.
 
 ## Setup & configuration
 Download the files of *this* repository to any location of your choise.
