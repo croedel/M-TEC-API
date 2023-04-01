@@ -1,7 +1,7 @@
 #/bin/bash
 
 PATH=$PATH:/usr/bin
-BASE_DIR="/home/pi/infotainment/MTEC_energybutler_API"
+BASE_DIR="/home/pi/infotainment/MTEC_API"
 BASE_DATA_DIR="$BASE_DIR/data"
 
 echo "`date '+%Y-%m-%d %H:%M:%S'` Data export started" 
