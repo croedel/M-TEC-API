@@ -9,6 +9,14 @@ I decided to have a closer look at this REST API. And here we are! This project 
 
 I hope you can make use of it and adapt it to your use-cases.
 
+## Remarks
+During I started developing this project in March 2023, MTEC seems to be doing some refactoring and updating of their portal, application and API. 
+
+Therefore e.g. Daily consumption values are only available starting 07.03.2023. 
+
+I will try to keep track of these changes - also in my own interest. ;-) 
+In order not to do uninteneded changes or settings and avoid any side-effects, I intentionally implemented read functionality only. 
+
 _Disclaimer:_ This project is a pure hobby project which I created by reverse-engineering the M-TEC Web-portal. It is *not* related to or supported by M-TEC GmbH by any means. Usage is on you own risk. I don't take any responsibility on functionality or potential damage.
 
 ## What it offers
@@ -18,8 +26,6 @@ The actual API can be found in `MTECapi.py`. It offers functionality to:
 * List your Plants and Devices and their base data
 * Retrieve current status and usage data
 * Retrieve historical usage data with different aggregation levels (day, month)
-
-To minimize the risk, I intentionally implemented read functionality only. 
 
 ### Demo client
 The demo-client `MTEC_client.py` is a simple interactive tool which makes use of `MTECapi` class and shows how to use it.
