@@ -42,7 +42,7 @@ You probably need to adjust some paths to make it fit to your environment.
 
 If you want to add it to the crontab, you need to open your crontab with `crontab -e` and add a line like e.g. 
 ```
-0 5 * * * /home/pi/infotainment/MTEC_energybutler_API/cron_daily.sh 2>&1 /home/pi/infotainment/MTEC_energybutler_API/cron.log
+0 5 * * * /home/pi/MTEC_API/cron_daily.sh 2>&1 /home/pi/MTEC_API/cron.log
 ```
 
 #### NFS mount 
