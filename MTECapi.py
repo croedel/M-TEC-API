@@ -57,7 +57,7 @@ class MTECapi:
     #-------------------------------------------------
     def _api_demo_login( self ):
         url = "login/demoManager"
-        email = cfg["DEMO_ACCOUNT"]
+        email = cfg["PV_DEMO_ACCOUNT"]
         payload = { 
             "channel": 1, 
             "email": email
@@ -98,8 +98,8 @@ class MTECapi:
     def _do_API_call( self, url, params=None, payload=None, method="GET" ):
         result = {}
         try:
-            response = requests.request( method, cfg["BASE_URL"]+url, headers=self.headers, params=params, 
-                                        json=payload, timeout=cfg["TIMEOUT"] )
+            response = requests.request( method, cfg["PV_BASE_URL"]+url, headers=self.headers, params=params, 
+                                        json=payload, timeout=cfg["PV_TIMEOUT"] )
         except requests.exceptions.RequestException as err:
             logging.error( "Couldn't request REST API: {:s} {:s} ({:s}) Exception {:s}".format(url, method, str(payload), str(err)) )
             result["code"] = "-1"
@@ -107,9 +107,9 @@ class MTECapi:
             if response.status_code == 200:
                 result = response.json()
                 if result["code"] == "3010022":     # Login timeout - retry
-                    if self.retry < cfg["MAX_LOGIN_RETRY"]:
+                    if self.retry < cfg["PV_MAX_LOGIN_RETRY"]:
                         self.retry += 1
-                        logging.info( "Token expired - try re-login ({:n}/{:n})".format( self.retry, cfg["MAX_LOGIN_RETRY"]) )
+                        logging.info( "Token expired - try re-login ({:n}/{:n})".format( self.retry, cfg["PV_MAX_LOGIN_RETRY"]) )
                         if self._login():
                             result = self._do_API_call( url, params, payload, method )
                             if result["code"] == "1000000":
