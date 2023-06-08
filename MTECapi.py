@@ -57,7 +57,7 @@ class MTECapi:
     #-------------------------------------------------
     def _api_demo_login( self ):
         url = "login/demoManager"
-        email = cfg["PV_DEMO_ACCOUNT"]
+        email = cfg["DEMO_ACCOUNT"]
         payload = { 
             "channel": 1, 
             "email": email
@@ -84,20 +84,22 @@ class MTECapi:
         self.headers = { 
             "Accept": "application/json, text/javascript, */*; q=0.01", 
             "Accept-Encoding": "gzip, deflate, br",
-            "Accept-Language": "de-DE",
+            "Accept-Language": "en-US",
             "Authorization": token,
             "Connection": "keep-alive",
+            "Cache-Control": "no-cache",
             "Content-Type": "application/json; charset=UTF-8",
             "DNT": "1",
             "Host": "energybutler.mtec-portal.com",
+            "Pragma": "no-cache",
         }
 
     #---------------------------------------------
     def _do_API_call( self, url, params=None, payload=None, method="GET" ):
         result = {}
         try:
-            response = requests.request( method, cfg["PV_BASE_URL"]+url, headers=self.headers, params=params, 
-                                        json=payload, timeout=cfg["PV_TIMEOUT"] )
+            response = requests.request( method, cfg["BASE_URL"]+url, headers=self.headers, params=params, 
+                                        json=payload, timeout=cfg["TIMEOUT"] )
         except requests.exceptions.RequestException as err:
             logging.error( "Couldn't request REST API: {:s} {:s} ({:s}) Exception {:s}".format(url, method, str(payload), str(err)) )
             result["code"] = "-1"
@@ -105,9 +107,9 @@ class MTECapi:
             if response.status_code == 200:
                 result = response.json()
                 if result["code"] == "3010022":     # Login timeout - retry
-                    if self.retry < cfg["PV_MAX_LOGIN_RETRY"]:
+                    if self.retry < cfg["MAX_LOGIN_RETRY"]:
                         self.retry += 1
-                        logging.info( "Token expired - try re-login ({:n}/{:n})".format( self.retry, cfg["PV_MAX_LOGIN_RETRY"]) )
+                        logging.info( "Token expired - try re-login ({:n}/{:n})".format( self.retry, cfg["MAX_LOGIN_RETRY"]) )
                         if self._login():
                             result = self._do_API_call( url, params, payload, method )
                             if result["code"] == "1000000":
@@ -227,16 +229,44 @@ class MTECapi:
             logging.error( "Error while retrieving device list for stationId '{}': {}".format( stationId, str(json_data) ) )
             
     #-------------------------------------------------
-    def query_usage_data( self, stationId, durationType, dateTime=None ):            
-        url = "curve/station/getGridConnectedData"
+    def query_usage_data( self, stationId, durationType, dateTime=None ): 
+        if durationType=="day": 
+            return self._query_usage_data_day( stationId, durationType, dateTime )
+        else:
+            return self._query_usage_data( stationId, durationType, dateTime )
+
+    #-------------------------------------------------
+    def _query_usage_data_day( self, stationId, durationType, dateTime=None ): 
+        url = "curve/station/queryStationCurve"
         date_str = ""
         if dateTime == None:
             dateTime = datetime.now()
 
-        if durationType=="day" or durationType=="today": 
-            dt = 1
-            date_str = dateTime.strftime("%Y-%m-%d")
-        elif durationType=="month":
+        dt = 1
+        date_str = dateTime.strftime("%Y-%m-%d")
+        payload = {
+            "stationId": stationId,
+            "durationType": dt,
+            "date": date_str,
+            "stationType": 0,
+            "timeZoneOffset": self._getTimezoneOffset(),
+            "type": "powerflow"
+        }
+        json_data = self._do_API_call( url, payload=payload, method="POST" )
+        if json_data["code"] == "1000000":
+            return self._parse_usage_data_day( json_data )
+        else:
+            logging.error( "Error while retrieving usage data for stationId '{}': {}".format( stationId, str(json_data) ) )
+            return False
+
+    #-------------------------------------------------
+    def _query_usage_data( self, stationId, durationType, dateTime=None ): 
+        url = "curve/station/queryStationBarChart"
+        date_str = ""
+        if dateTime == None:
+            dateTime = datetime.now()
+
+        if durationType=="month":
             dt = 2
             date_str = dateTime.strftime("%Y-%m")
         elif durationType=="year":
@@ -245,38 +275,21 @@ class MTECapi:
         elif durationType=="lifetime":
             dt = 4
                         
-        params = {
-            "id": stationId,
+        payload = {
+            "stationId": stationId,
             "durationType": dt,
             "date": date_str,
-            "stationType": "0",
+            "stationType": 0,
             "timeZoneOffset": self._getTimezoneOffset(),
-            "type": "powerflow"
+            "type": "update"
         }
-        json_data = self._do_API_call( url, params=params, method="GET" )
+        json_data = self._do_API_call( url, payload=payload, method="POST" )
         if json_data["code"] == "1000000":
-            if durationType=="day":
-                return self._parse_usage_data_day( json_data )
-            elif durationType=="today":
-                return self._parse_today_summary_data( json_data )
-            else:
-                return self._parse_usage_data( date_str, json_data )
+            return self._parse_usage_data( date_str, json_data )
         else:
             logging.error( "Error while retrieving usage data for stationId '{}': {}".format( stationId, str(json_data) ) )
             return False
 
-    #-------------------------------------------------
-    def _parse_today_summary_data( self, json_data ):            
-        # map todays summary data into data structure 
-        data = {}
-        d = json_data["data"]["eRatioGraph"]    
-        data["day_grid_load"] =  { "value": d["eMeterTotalBuy"], "unit": "kWh" }        
-        data["day_grid_feed"] =  { "value": d["eMeterTotalSell"], "unit": "kWh" }           
-        data["day_usage"] =      { "value": d["eUse"], "unit": "kWh" }                          
-        data["day_usage_self"] = { "value": d["eUseSelf"], "unit": "kWh" }                 
-        data["day_total"] =      { "value": d["eDayTotal"], "unit": "kWh" }                     
-        return data
-    
     #-------------------------------------------------
     def _parse_usage_data_day( self, json_data ):            
         # map data into data structure (daily is different from the other time ranges)
@@ -300,7 +313,7 @@ class MTECapi:
         data = []
         for i in d:
             if date_str: # month or year
-                date = "{}-{:02d}".format( date_str, i.get("date") ) 
+                date = date_str + "-" + i.get("date") 
             else: # lifetime
                 date = i.get("date") 
             grid_load = i.get("ebuytotal") 
