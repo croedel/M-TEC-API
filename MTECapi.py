@@ -230,7 +230,7 @@ class MTECapi:
             
     #-------------------------------------------------
     def query_usage_data( self, stationId, durationType, dateTime=None ): 
-        if durationType=="day": 
+        if durationType=="day" or durationType=="daysummary": 
             return self._query_usage_data_day( stationId, durationType, dateTime )
         else:
             return self._query_usage_data( stationId, durationType, dateTime )
@@ -254,7 +254,10 @@ class MTECapi:
         }
         json_data = self._do_API_call( url, payload=payload, method="POST" )
         if json_data["code"] == "1000000":
-            return self._parse_usage_data_day( json_data )
+            if durationType=="day":
+                return self._parse_usage_data_day( json_data )
+            elif durationType=="daysummary":
+                return self._parse_usage_data_day_summary( json_data )
         else:
             logging.error( "Error while retrieving usage data for stationId '{}': {}".format( stationId, str(json_data) ) )
             return False
@@ -291,10 +294,22 @@ class MTECapi:
             return False
 
     #-------------------------------------------------
+    def _parse_usage_data_day_summary( self, json_data ):            
+        # map data into data structure (daily summary)
+        data = {}
+        d = json_data["data"]["eRatioGraph"]
+        data["day_grid_load"] = d.get("eMeterTotalBuy") 
+        data["day_grid_feed"] = d.get("eMeterTotalSell")
+        data["day_usage"] = d.get("eUse")
+        data["day_usage_self"] = d.get("eUseSelf") 
+        data["day_total"] = d.get("eDayTotal")
+        return data
+
+    #-------------------------------------------------
     def _parse_usage_data_day( self, json_data ):            
         # map data into data structure (daily is different from the other time ranges)
-        d = json_data["data"]["curve"]
         data = []
+        d = json_data["data"]["curve"]
         for i in d:
             ts = i.get("dateStamp") 
             load = i.get("loadPower") 
