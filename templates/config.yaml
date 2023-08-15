@@ -3,6 +3,14 @@
 PV_EMAIL : ""               # e-mail address you used to register at M-TEC portal
 PV_PASSWORD : ""            # password you used to register at M-TEC portal
 
+# MQTT
+MQTT_SERVER : "localhost"   # MQTT server 
+MQTT_PORT : 1883            # MQTT server port
+MQTT_LOGIN  : " "           # MQTT Login
+MQTT_PASSWORD : ""          # MQTT Password  
+MQTT_TOPIC : "MTEC"         # MQTT topic name (top-level)  
+
+
 ##########################
 # Base config - probably no need to change
 PV_BASE_URL : "https://energybutler.mtec-portal.com/api/sys/"  # Base URL of API
