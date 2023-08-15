@@ -355,30 +355,53 @@ class MTECapi:
             # map data into data structure
             data = {}     
             for node in json_data["data"]["config"]:
-                if node["labelId"] == 201:  
-                    
+                if node["labelId"] == 202:    
                     data["inverter"] = {}
                     for d in node["data"]:
-                        data["inverter"][d["field"]] = d["value"] 
+                        if d["unit"]:   # value unfortunately contains a string with unit -> clean up
+                            d["value"] = float( d["value"].split(" ")[0] )    
+                        data["inverter"][d["field"]] = { "value": d["value"], "unit": d["unit"] }
 
                 elif node["labelId"] == 203:   
                     data["battery"] = {}
                     for d in node["data"]:
-                            data["battery"][d["field"]] = d["value"] 
+                        if d["unit"]:   # value unfortunately contains a string with unit -> clean up
+                            d["value"] = float( d["value"].split(" ")[0] )    
+                        data["battery"][d["field"]] = { "value": d["value"], "unit": d["unit"] }
                 
                 elif node["labelId"] == 206:
                     data["grid"] = {}
                     for phase in node["data"]:
                         for _, d in phase.items():
-                            if d.get("field"):
-                                data["grid"][d["field"]] = d["value"] 
+                            if d.get("field"): 
+                                # We need to add the unit "manually"
+                                if d["field"].endswith("_P") or d["field"].startswith("Pmeter"):
+                                    unit = "kW"
+                                elif d["field"].endswith("_V") or d["field"].startswith("Vgrid"):
+                                    unit = "V"
+                                elif d["field"].endswith("_I") or d["field"].startswith("Igrid"):
+                                    unit = "A"
+                                elif d["field"].endswith("_F"):
+                                    unit = "Hz"
+                                else:
+                                    unit = ""            
+                                data["grid"][d["field"]] = { "value": d["value"], "unit": unit }
                 
                 elif node["labelId"] == 502:            
-                    data["PV"] = {}
+                    data["PV"] = []
                     for pv in node["data"]:
+                        PV_string = {}
                         for _, d in pv.items():
                             if d.get("field"):
-                                data["PV"][d["field"]] = d["value"] 
+                                if d["field"].startswith("power"):
+                                    PV_string["power"] = { "value": d["value"], "unit": "kW" }
+                                elif d["field"].startswith("V"):
+                                    PV_string["voltage"] = { "value": d["value"], "unit": "V" }
+                                elif d["field"].startswith("I"):
+                                    PV_string["current"] = { "value": d["value"], "unit": "A" }
+                            else:
+                                PV_string["name"] = { "value": d["value"], "unit": "" }
+                        data["PV"].append( PV_string )
 
             return data
         else:
