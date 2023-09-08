@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MQTT server for MTEC
+MQTT server for MTEC Energybutler
 """
 
 from config import cfg
@@ -29,7 +29,7 @@ def mqtt_start():
   try: 
     client = mqttcl.Client()
     client.username_pw_set(cfg['MQTT_LOGIN'], cfg['MQTT_PASSWORD']) 
-    client.connect(cfg['MQTT_SERVER'], cfg['MQTT_PORT'], 60) 
+    client.connect(cfg['MQTT_SERVER'], cfg['MQTT_PORT'], keepalive = 60) 
     client.on_connect = on_mqtt_connect
     client.on_message = on_mqtt_message
     client.loop_start()
@@ -50,9 +50,9 @@ def mqtt_publish( topic, payload ):
     'username': cfg['MQTT_LOGIN'],
     'password': cfg['MQTT_PASSWORD'] 
   }  
-  logging.debug("Publish MQTT command {}: {} {}".format(topic, payload, str(auth)))
+  logging.debug("Publish MQTT command {}: {}".format(topic, payload))
   try:
-    publish.single(topic, payload=payload, hostname=cfg['MQTT_SERVER'], port=cfg['MQTT_PORT'], keepalive=10, auth=auth)
+    publish.single(topic, payload=payload, hostname=cfg['MQTT_SERVER'], port=cfg['MQTT_PORT'], auth=auth)
   except Exception as e:
     logging.error("Could't send MQTT command: {}".format(str(e)))
 
@@ -110,7 +110,7 @@ def write_to_MQTT( pvdata, base_topic ):
     else:  
       payload = data["value"]
     logging.debug("- {}: {}".format(topic, str(payload)))
-#    mqtt_publish( topic, payload )
+    mqtt_publish( topic, payload )
 
 #==========================================
 def main():
@@ -127,12 +127,16 @@ def main():
     for station_id, station_data in stations:
       devices = api.getDevices(station_id)
       pvdata = read_MTEC_station_data(api, station_id)
-      base_topic = cfg['MQTT_TOPIC'] + '/' + station_data['name'] + '/'
-      write_to_MQTT( pvdata, base_topic )
+      if cfg['WRITE_STATION_DATA'] == True:
+        logging.debug("Station {} ({})".format( station_data['name'], station_id ))
+        base_topic = cfg['MQTT_TOPIC'] + '/' + station_data['name'] + '/'
+        write_to_MQTT( pvdata, base_topic )
       for device_id, device_data in devices: 
         pvdata = read_MTEC_device_data(api, device_id)
-        base_topic = cfg['MQTT_TOPIC'] + '/' + station_data['name'] + '/' + device_data['name'] + '/'
-        write_to_MQTT( pvdata, base_topic )
+        if cfg['WRITE_DEVICE_DATA'] == True:
+          logging.debug("Device {} ({})".format( device_data['name'], device_id ))
+          base_topic = cfg['MQTT_TOPIC'] + '/' + station_data['name'] + '/' + device_data['name'] + '/'
+          write_to_MQTT( pvdata, base_topic )
 
     logging.debug("Sleep {}s".format( cfg['POLL_FREQUENCY'] ))
     time.sleep(cfg['POLL_FREQUENCY'])

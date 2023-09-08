@@ -34,6 +34,9 @@ The demo-client `MTEC_client.py` is a simple interactive tool which makes use of
 The command-line tool `export_data.py` offers functionality to export usage data in CSV format.
 This enables to archive the data localy or to process it further in a database or spreadsheet tool.   
 
+### MQTT server
+The MQTT server `MTEC_mqtt.py` enables to export station and/or device data to a MQTT broker. This can be useful, if you want to use the data e.g. as source for an EMS or home automation tool. Many of them enable to read data from MQTT, therefore this might be a good option for an easy integration.
+
 ### Tools and utils
 #### cronjob
 I wanted to have a daily export of the PV data and store it on a lokal NAS drive.
@@ -57,7 +60,17 @@ _Hint:_ In order to install it, you need to be root (or use sudo):
 - To start a service at boot time automatically, use `systemctl enable mnt-public.mount` etc.
 
 ## Setup & configuration
-Download the files of *this* repository to any location of your choise.
+
+As prerequisites, you need to have installed Python 3 and https://pypi.org/project/PyYAML/.
+(Depending on your Python installation, installation might require root rights or using `sudo`)
+
+PyYAML can be installed easily like this:
+
+```
+pip3 install pyyaml
+```
+
+Now download the files of *this* repository to any location of your choise.
 Then copy `config.yaml` from the `templates` directory to the project root (=same directory where `MTECapi.py` is locaed).
 
 Without any further configuration, `MTECapi` will use the demo-account which is offered on the official M-TEC Web-portal.
@@ -88,4 +101,23 @@ Please select:
 The command-line tool `export_data.py` offers functionality to export usage data in CSV format.
 This enables to archive the data localy or to process it further in a database or spreadsheet tool.
 
+### MQTT server
+The MQTT server `MTEC_mqtt.py` enables to export station and/or device data to a MQTT broker. This can be useful, if you want to use the data e.g. as source for an EMS or home automation tool. Many of them enable to read data from MQTT, therefore this might be a good option for an easy integration.
 
+Please see following options in `config.yaml` to configurate the service according your demand:
+
+```
+# MQTT
+MQTT_SERVER : "localhost"   # MQTT server 
+MQTT_PORT : 1883            # MQTT server port
+MQTT_LOGIN  : " "           # MQTT Login
+MQTT_PASSWORD : ""          # MQTT Password  
+MQTT_TOPIC : "MTEC"         # MQTT topic name (top-level)  
+
+POLL_FREQUENCY : 60         # query data every N seconds
+DEBUG : False               # Set to True to get verbose debug messages
+WRITE_STATION_DATA : True   # Choose if you want to write station data to MQTT
+WRITE_DEVICE_DATA : True    # Choose if you want to write device data to MQTT
+```
+
+The scripts can export station and/or device data - depending on the flags `WRITE_STATION_DATA` respectively `WRITE_DEVICE_DATA` 
