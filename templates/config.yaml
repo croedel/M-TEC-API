@@ -10,6 +10,10 @@ MQTT_LOGIN  : " "           # MQTT Login
 MQTT_PASSWORD : ""          # MQTT Password  
 MQTT_TOPIC : "MTEC"         # MQTT topic name (top-level)  
 
+POLL_FREQUENCY : 60         # query data every N seconds
+DEBUG : True                # Set to True to get verbose debug messages
+WRITE_STATION_DATA : True   # Choose if you want to write station data to MQTT
+WRITE_DEVICE_DATA : True    # Choose if you want to write device data to MQTT
 
 ##########################
 # Base config - probably no need to change
