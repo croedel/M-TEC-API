@@ -97,13 +97,16 @@ Menu:
 Please select:
 ```
 
-### CSV export tool
-The command-line tool `export_data.py` offers functionality to export usage data in CSV format.
+## CSV export tool
+The command-line tool `export_data.py` offers functionality to export historical usage data in CSV format.
 This enables to archive the data localy or to process it further in a database or spreadsheet tool.
 
-### MQTT server
+You can choose between "day", "month", "year" or "lifetime" data. 
+
+## MQTT server
 The MQTT server `MTEC_mqtt.py` enables to export station and/or device data to a MQTT broker. This can be useful, if you want to use the data e.g. as source for an EMS or home automation tool. Many of them enable to read data from MQTT, therefore this might be a good option for an easy integration.
 
+### Configuration
 Please see following options in `config.yaml` to configurate the service according your demand:
 
 ```
@@ -118,6 +121,60 @@ POLL_FREQUENCY : 60         # query data every N seconds
 DEBUG : False               # Set to True to get verbose debug messages
 WRITE_STATION_DATA : True   # Choose if you want to write station data to MQTT
 WRITE_DEVICE_DATA : True    # Choose if you want to write device data to MQTT
+
+MQTT_FLOAT_FORMAT : "{:.2f}"    # Defines how to format float values 
 ```
 
-The scripts can export station and/or device data - depending on the flags `WRITE_STATION_DATA` respectively `WRITE_DEVICE_DATA` 
+### Data format written to MQTT
+
+The script will login with the given M-TEC credentials and will auto-detect the topology of your plant. It will then loop over all existing stations and all the devices within each station. It will write the data to MQTT every `POLL_FREQUENCY` seconds. 
+
+If `WRITE_STATION_DATA` is set to True, the station specific data will be written to a MQTT topic, using following naming:
+
+`MTEC/<station_name>/<parameter>`
+
+| Parameter             | Type  | Unit | Description 
+|---------------------- | ----- | ---- | ---------------------------------------------- 
+| day_production        | float | kWh  | Energy produced by the PV today 
+| month_production      | float | kWh  | Energy produced by the PV this month
+| year_production       | float | kWh  | Energy produced by the PV this year
+| total_production      | float | kWh  | Energy produced by the PV in total
+| current_PV            | float | W    | Current flow from PV
+| current_grid          | float | W    | Current flow from/to grid (feed in to grid is represented by neg. values)
+| current_battery       | float | W    | Current flow from/to battery (feed in to battery is represented by neg. values)
+| current_battery_SOC   | int   | %    | Current battery SOC
+| current_load          | float | W    | Current consumed energy
+| grid_interrupt        | int   |      | 0=Grid connected, 1=Grid interrupted 
+
+If `WRITE_DEVICE_DATA` is set to True, the device specific data will be written to a MQTT topic, using following naming:
+
+`MTEC/<station_name>/<device_name>/<parameter>`
+
+| Parameter             | Type  | Unit  | Description
+|---------------------- | ----- | ---- | ---------------------------------------------- 
+| battery_P             | float | W    | Battery power             
+| battery_V             | float | V    | Battery voltage
+| battery_I             | float | A    | Battery current
+| battery_SOC           | float | %    | Battery state of charge
+| inverter_A_P          | float | W    | Inverter phase L1 power
+| inverter_A_V          | float | V    | Inverter phase L1 voltage
+| inverter_A_I          | float | A    | Inverter phase L1 current
+| inverter_B_P          | float | W    | Inverter phase L2 power
+| inverter_B_V          | float | V    | Inverter phase L2 voltage
+| inverter_B_I          | float | A    | Inverter phase L2 current
+| inverter_C_P          | float | W    | Inverter phase L3 power
+| inverter_C_V          | float | V    | Inverter phase L3 voltage
+| inverter_C_I          | float | A    | Inverter phase L3 current
+| grid_A_P              | float | W    | Grid phase L1 power
+| grid_B_P              | float | W    | Grid phase L2 power
+| grid_C_P              | float | W    | Grid phase L3 power
+| PV_PV1_P              | float | W    | PV string 1 power
+| PV_PV1_V              | float | V    | PV string 1 voltage
+| PV_PV1_I              | float | A    | PV string 1 current
+| PV_PV2_P              | float | W    | PV string 2 power
+| PV_PV2_V              | float | V    | PV string 2 voltage
+| PV_PV2_I              | float | A    | PV string 2 current
+
+The existance of the latter parameters (`PV_PVx_...`) depend on the no. of installed PV strings (typically 1 or 2). 
+
+All `float` values will be written according to the configured `MQTT_FLOAT_FORMAT`. The default is a format with 2 decimal digits. 

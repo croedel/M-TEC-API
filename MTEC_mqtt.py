@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MQTT server for MTEC Energybutler
+MQTT server for M-TEC Energybutler
 """
 
 from config import cfg
@@ -57,45 +57,77 @@ def mqtt_publish( topic, payload ):
     logging.error("Could't send MQTT command: {}".format(str(e)))
 
 # =============================================
+
+def normalize( data ):
+  if( isinstance(data, dict) and "value" in data and "unit" in data ):
+    # Normalize power to W
+    if data["unit"] == "kW":
+      data["value"] *= 1000
+      data["unit"] = "W" 
+    elif data["unit"] == "MW":
+      data["value"] *= 1000000
+      data["unit"] = "W" 
+    elif data["unit"] == "GW":
+      data["value"] *= 1000000000          
+      data["unit"] = "W" 
+    # Normalize work to kWh
+    elif data["unit"] == "Wh":
+      data["value"] /= 1000
+      data["unit"] = "kWh" 
+    elif data["unit"] == "MWh":
+      data["value"] *= 1000
+      data["unit"] = "kWh" 
+    elif data["unit"] == "GWh":
+      data["value"] *= 1000000          
+      data["unit"] = "kWh" 
+  return data            
+
 # read station data from MTEC device
 def read_MTEC_station_data( api, station_id ):
   data = api.query_station_data(station_id)
   pvdata = {}
-  pvdata["day_production"] = data["todayEnergy"]              # Energy produced by the PV today
-  pvdata["month_production"] = data["monthEnergy"]            # Energy produced by the PV this month
-  pvdata["year_production"] = data["yearEnergy"]              # Energy produced by the PV this year
-  pvdata["total_production"] = data["totalEnergy"]            # Energy produced by the PV in total
-  pvdata["current_PV"] = data["PV"]                           # Current flow from PV
-  pvdata["current_grid"] = data["grid"]                       # Current flow from/to grid
-  pvdata["current_battery"] = data["battery"]                 # Current flow from/to battery
+  pvdata["day_production"] = normalize(data["todayEnergy"])              # Energy produced by the PV today
+  pvdata["month_production"] = normalize(data["monthEnergy"])            # Energy produced by the PV this month
+  pvdata["year_production"] = normalize(data["yearEnergy"])              # Energy produced by the PV this year
+  pvdata["total_production"] = normalize(data["totalEnergy"])            # Energy produced by the PV in total
+  pvdata["current_PV"] = normalize(data["PV"])                           # Current flow from PV
+  pvdata["current_grid"] = normalize(data["grid"])                       # Current flow from/to grid
+  pvdata["current_battery"] = normalize(data["battery"])                 # Current flow from/to battery
   pvdata["current_battery_SOC"] = { "value": data["battery"]["SOC"], "unit": "%" }   # Current battery SOC
-  pvdata["current_load"] = data["load"]                       # Current consumed energy
+  pvdata["current_load"] = normalize(data["load"])                       # Current consumed energy
   pvdata["grid_interrupt"] = { "value": data["lackMaster"], "unit": "" }  # Grid interrup flag
+
+  # grid and battery: Invert to negativ value if direction == 2 ("feed in")
+  if data["grid"]["direction"] == 2:
+    pvdata["current_grid"] *= -1  
+  if data["battery"]["direction"] == 2:
+    pvdata["current_battery"] *= -1  
+
   return pvdata
 
 # read device data from MTEC device
 def read_MTEC_device_data( api, device_id ):
   data = api.query_device_data(device_id)
   pvdata = {}
-  pvdata["battery_P"] = data["battery"]["Battery_P"]
+  pvdata["battery_P"] = normalize(data["battery"]["Battery_P"])
   pvdata["battery_V"] = data["battery"]["Battery_V"]
   pvdata["battery_I"] = data["battery"]["Battery_I"]
   pvdata["battery_SOC"] = data["battery"]["SOC"]
-  pvdata["inverter_A_P"] = data["grid"]["Invt_A_P"]
+  pvdata["inverter_A_P"] = normalize(data["grid"]["Invt_A_P"])
   pvdata["inverter_A_V"] = data["grid"]["Vgrid_PhaseA"]
   pvdata["inverter_A_I"] = data["grid"]["Igrid_PhaseA"]
-  pvdata["inverter_B_P"] = data["grid"]["Invt_B_P"]
+  pvdata["inverter_B_P"] = normalize(data["grid"]["Invt_B_P"])
   pvdata["inverter_B_V"] = data["grid"]["Vgrid_PhaseB"]
   pvdata["inverter_B_I"] = data["grid"]["Igrid_PhaseB"]
-  pvdata["inverter_C_P"] = data["grid"]["Invt_C_P"]
+  pvdata["inverter_C_P"] = normalize(data["grid"]["Invt_C_P"])
   pvdata["inverter_C_V"] = data["grid"]["Vgrid_PhaseC"]
   pvdata["inverter_C_I"] = data["grid"]["Igrid_PhaseC"]
-  pvdata["grid_A_P"] = data["grid"]["PmeterPhaseA"]
-  pvdata["grid_B_P"] = data["grid"]["PmeterPhaseB"]
-  pvdata["grid_C_P"] = data["grid"]["PmeterPhaseC"]
+  pvdata["grid_A_P"] = normalize(data["grid"]["PmeterPhaseA"])
+  pvdata["grid_B_P"] = normalize(data["grid"]["PmeterPhaseB"])
+  pvdata["grid_C_P"] = normalize(data["grid"]["PmeterPhaseC"])
 
   for string in data["PV"]:
-    pvdata["PV_"+string["name"]["value"]+"_P"] = string["power"]["value"]
+    pvdata["PV_"+string["name"]["value"]+"_P"] = normalize(string["power"]["value"])
     pvdata["PV_"+string["name"]["value"]+"_V"] = string["voltage"]["value"]
     pvdata["PV_"+string["name"]["value"]+"_I"] = string["current"]["value"]
 
@@ -105,12 +137,22 @@ def read_MTEC_device_data( api, device_id ):
 def write_to_MQTT( pvdata, base_topic ):
   for param, data in pvdata.items():
     topic = base_topic + param
-    if isinstance(data, float):  
-      payload = data
-    else:  
-      payload = data["value"]
+    if isinstance(data, dict):
+      if isinstance(data["value"], float):  
+        payload = cfg['MQTT_FLOAT_FORMAT'].format( data["value"] )
+      elif isinstance(data["value"], bool):  
+        payload = "{:d}".format( data["value"] )
+      else:
+        payload = data["value"]
+    else:   
+      if isinstance(data, float):  
+        payload = cfg['MQTT_FLOAT_FORMAT'].format( data )
+      elif isinstance(data, bool):  
+        payload = "{:d}".format( data )
+      else:
+        payload = data  
     logging.debug("- {}: {}".format(topic, str(payload)))
-    mqtt_publish( topic, payload )
+#    mqtt_publish( topic, payload )
 
 #==========================================
 def main():
@@ -119,6 +161,7 @@ def main():
     logging.getLogger().setLevel(logging.DEBUG)
   logging.info("Starting")
 
+  # Inititialization
   mqttclient = mqtt_start()
   api = MTECapi.MTECapi()
   stations = api.getStations()
