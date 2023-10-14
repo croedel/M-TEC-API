@@ -99,9 +99,9 @@ def read_MTEC_station_data( api, station_id ):
 
   # grid and battery: Invert to negativ value if direction == 2 ("feed in")
   if data["grid"]["direction"] == 2:
-    pvdata["current_grid"] *= -1  
+    pvdata["current_grid"]["value"] *= -1  
   if data["battery"]["direction"] == 2:
-    pvdata["current_battery"] *= -1  
+    pvdata["current_battery"]["value"] *= -1  
 
   return pvdata
 
