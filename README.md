@@ -2,7 +2,7 @@
 Welcome to the `M-TEC API` project!
 It enables to read data from a M-TEC Energybutler system (https://www.mtec-systems.com) using the M-TEC online service.
 
-Hint: It you are looking for a project which enables to read the M-TEC Inverter directly and without Internet, have a look at my `MTECmqtt` project! 
+Hint: It you are looking for a project which enables to read the M-TEC Inverter directly and without Internet, have a look at my `MTECmqtt` https://github.com/croedel/MTECmqtt project! 
 
 The trigger for this project was, that after my PV inverter from M-TEC was installed, I wanted to read out some data and statistics in order to integrate it into my smart home environment. Unfortunately, I couldn't find any documented API to access the M-TEC inverter. 
 Luckily, there is a quite nice Web-portal available at https://energybutler.mtec-portal.com. The Web UI uses a REST API to retrieve data from a backend, which is "magically" fed by the inverter. (It could be worth another project, to find out more about how this works...).
